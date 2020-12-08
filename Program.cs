@@ -7,42 +7,80 @@ var operations = (await File.ReadAllLinesAsync("data.txt"))
     .Select(line => new Instruction(line))
     .ToArray();
 
-var accumulator = 0;
-var line = 0;
-var instructionsRun = new List<int>();
+var possibles = new List<int>();
+var tried = new List<int>();
+var firstRun = true;
 
-while (line >= 0 && line < operations.Length)
+while (true)
 {
-    if (instructionsRun.Contains(line))
+    if (ExecuteProgram())
     {
-        break;
-    }
-    else
+        Console.WriteLine($"🏆 took {tried.Count} attempts");
+        return;
+    } 
+    else 
     {
-        instructionsRun.Add(line);
+        if (firstRun) 
+        {
+            firstRun = false;
+        } 
+        else
+        {
+            var lastTried = tried.Last();
+            var lastTriedOp = operations[tried.Last()];
+            Console.WriteLine($"🐬 Going to flip BACK {lastTriedOp} at {lastTried}");
+            lastTriedOp.Flip();
+        }
     }
 
-    var operation = operations[line];
-    Console.WriteLine($"Instruction {line} | Value {accumulator} - Operation {operation}");
-    switch (operation.Operation)
-    {
-        case Operation.ACC:
-            {
-                accumulator += operation.Attribute;
-                line++;
-                break;
-            }
-        case Operation.JMP:
-            {
-                line += operation.Attribute;
-                break;
-            }
-        case Operation.NOP:
-            {
-                line++;
-                break;
-            }
-    }
+    var availableToTry = possibles.Except(tried).First();
+    tried.Add(availableToTry);
+    var opToFlip = operations[availableToTry];
+    Console.WriteLine();
+    Console.WriteLine($"🐬 Going to flip {opToFlip} at {availableToTry}");
+    opToFlip.Flip();
 }
 
-Console.WriteLine($"🧮 is {accumulator}");
+bool ExecuteProgram()
+{
+    Console.WriteLine();
+    Console.WriteLine("⛳ start");
+    var accumulator = 0;
+    var line = 0;
+    var instructionsRun = new List<int>();
+
+    while (line < operations.Length)
+    {
+        if (instructionsRun.AddIfMissing(line))
+        {
+            return false;
+        }
+
+        var operation = operations[line];
+        Console.WriteLine($"Instruction {line} | Value {accumulator} - Operation {operation}");
+        switch (operation.Operation)
+        {
+            case Operation.ACC:
+                {
+                    accumulator += operation.Attribute;
+                    line++;
+                    break;
+                }
+            case Operation.JMP:
+                {
+                    possibles.AddIfMissing(line);
+                    line += operation.Attribute;
+                    break;
+                }
+            case Operation.NOP:
+                {
+                    possibles.AddIfMissing(line);
+                    line++;
+                    break;
+                }
+        }
+    }
+
+    Console.WriteLine($"🧮 is {accumulator}");
+    return true;
+}
